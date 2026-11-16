@@ -1,4 +1,5 @@
 """Unit and API integration tests for Perseverance MEDA Environmental Intelligence."""
+import os
 import pytest
 from httpx import AsyncClient, ASGITransport
 from app.main import app
@@ -154,4 +155,92 @@ async def test_sol_timeseries_endpoint():
         assert "sclk" in first_pt
         assert "lmst" in first_pt
         assert "ltst" in first_pt
+
+
+def test_timeseries_cache_numerical_equivalence():
+    """Verify disk cache samples are 100% numerically equivalent (<= 6 decimal places) to raw CSV output."""
+    # Test Sol 74 (standard 100 points)
+    cached_74 = meda_service._load_timeseries_from_disk_cache(74, 100)
+    raw_74 = meda_service._parse_timeseries_from_csv(74, 100)
+
+    assert cached_74 is not None
+    assert len(cached_74.samples) == len(raw_74.samples) == 100
+
+    for i, (c, r) in enumerate(zip(cached_74.samples, raw_74.samples)):
+        assert c.sclk == pytest.approx(r.sclk, abs=1e-6)
+        assert c.lmst == r.lmst
+        assert c.ltst == r.ltst
+        if r.ats_temp1_k is not None:
+            assert c.ats_temp1_k == pytest.approx(r.ats_temp1_k, abs=1e-6)
+        else:
+            assert c.ats_temp1_k is None
+        if r.pressure_pa is not None:
+            assert c.pressure_pa == pytest.approx(r.pressure_pa, abs=1e-6)
+        else:
+            assert c.pressure_pa is None
+        if r.air_temp_k is not None:
+            assert c.air_temp_k == pytest.approx(r.air_temp_k, abs=1e-6)
+        else:
+            assert c.air_temp_k is None
+        if r.ground_brightness_temp_k is not None:
+            assert c.ground_brightness_temp_k == pytest.approx(r.ground_brightness_temp_k, abs=1e-6)
+        else:
+            assert c.ground_brightness_temp_k is None
+        if r.wind_speed_ms is not None:
+            assert c.wind_speed_ms == pytest.approx(r.wind_speed_ms, abs=1e-6)
+        else:
+            assert c.wind_speed_ms is None
+        if r.wind_direction_deg is not None:
+            assert c.wind_direction_deg == pytest.approx(r.wind_direction_deg, abs=1e-6)
+        else:
+            assert c.wind_direction_deg is None
+        assert c.rds_top_7 == r.rds_top_7
+
+    # Test Sol 755 (50 points)
+    cached_755 = meda_service._load_timeseries_from_disk_cache(755, 50)
+    raw_755 = meda_service._parse_timeseries_from_csv(755, 50)
+
+    assert cached_755 is not None
+    assert len(cached_755.samples) == len(raw_755.samples) == 50
+    for c, r in zip(cached_755.samples, raw_755.samples):
+        assert c.sclk == pytest.approx(r.sclk, abs=1e-6)
+        assert c.lmst == r.lmst
+        assert c.ltst == r.ltst
+        assert c.wind_speed_ms is None and r.wind_speed_ms is None
+
+
+def test_timeseries_variable_max_points_and_fallback():
+    """Verify disk cache handles supported resolutions and cleanly falls back to CSV for custom/large resolutions."""
+    # Supported resolution: 20 points
+    res_20 = meda_service.get_sol_timeseries(74, 20)
+    assert len(res_20.samples) == 20
+
+    # Large resolution > 200 (e.g. 250): must fall back to CSV parser without error or truncation
+    res_250 = meda_service.get_sol_timeseries(74, 250)
+    assert len(res_250.samples) == 250
+    assert res_250.samples[0].sclk > 0
+
+
+def test_timeseries_corrupt_cache_fallback(tmp_path):
+    """Verify that corrupt, malformed, or missing JSON caches safely fall back to raw CSV parsing."""
+    import shutil
+    from app.services.meda_service import MedaService
+
+    # Create temporary service directory with a corrupt cache file
+    temp_dir = tmp_path / "meda"
+    temp_dir.mkdir()
+
+    # Copy raw CSV sol_0074 data to temp
+    shutil.copytree(os.path.join(meda_service.data_dir, "sol_0074"), temp_dir / "sol_0074")
+
+    # Write malformed JSON cache
+    corrupt_cache_file = temp_dir / "timeseries_cache_sol_0074.json"
+    corrupt_cache_file.write_text("{corrupt: json! invalid", encoding="utf-8")
+
+    temp_service = MedaService(data_dir=str(temp_dir))
+    # Must not raise an exception; must log warning and fall back to raw CSV parser
+    res = temp_service.get_sol_timeseries(74, 50)
+    assert res is not None
+    assert len(res.samples) == 50
+    assert res.samples[0].ats_temp1_k is not None
 

@@ -6,6 +6,7 @@ System (PDS4 Atmospheres Node), bundle: urn:nasa:pds:mars2020_meda.
 import os
 import glob
 import csv
+import json
 import logging
 from collections import OrderedDict
 from typing import Optional, List, Dict, Any, Tuple
@@ -311,13 +312,58 @@ class MedaService:
             self._telemetry_cache.popitem(last=False)
         return response
 
-    def get_sol_timeseries(self, sol: int, max_points: int = 100) -> MEDASolTimeSeriesResponse:
-        """Return downsampled time series for plotting diurnal trends."""
-        cache_key = (sol, max_points)
-        if cache_key in self._timeseries_cache:
-            self._timeseries_cache.move_to_end(cache_key)
-            return self._timeseries_cache[cache_key]
+    def _load_timeseries_from_disk_cache(self, sol: int, max_points: int) -> Optional[MEDASolTimeSeriesResponse]:
+        """Attempt to load pre-computed timeseries from disk cache.
 
+        Returns None if cache is missing, malformed, or does not contain
+        the exact requested resolution.
+        """
+        cache_filename = f"timeseries_cache_sol_{sol:04d}.json"
+        cache_path = os.path.join(self.data_dir, cache_filename)
+        if not os.path.isfile(cache_path):
+            return None
+
+        try:
+            with open(cache_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+
+            if not isinstance(data, dict):
+                logger.warning(f"Disk cache {cache_filename} is not a valid JSON object")
+                return None
+
+            samples_raw: Optional[List[Dict[str, Any]]] = None
+
+            # 1. Exact resolution match in multi-resolution cache
+            resolutions = data.get("resolutions")
+            if isinstance(resolutions, dict):
+                res_key = str(max_points)
+                if res_key in resolutions and isinstance(resolutions[res_key], list):
+                    samples_raw = resolutions[res_key]
+
+            # 2. Direct samples array match
+            if samples_raw is None:
+                direct_samples = data.get("samples")
+                if isinstance(direct_samples, list) and len(direct_samples) == max_points:
+                    samples_raw = direct_samples
+
+            # If requested resolution is not in the verified cache, fall back to CSV parser
+            if samples_raw is None:
+                return None
+
+            parsed_samples = [TimeSeriesSample(**item) for item in samples_raw]
+            return MEDASolTimeSeriesResponse(
+                sol=sol,
+                site_location=data.get("site_location", "Jezero Crater, Mars"),
+                is_historical_archive=data.get("is_historical_archive", True),
+                samples=parsed_samples,
+                total_samples=len(parsed_samples),
+            )
+        except Exception as e:
+            logger.warning(f"Error loading disk cache {cache_path}: {e}. Falling back to CSV parser.")
+            return None
+
+    def _parse_timeseries_from_csv(self, sol: int, max_points: int) -> MEDASolTimeSeriesResponse:
+        """Parse raw NASA CSV files sequentially from disk with exact mathematical sampling."""
         sol_dir = self._get_sol_dir(sol)
         ats_file = self._find_file(sol_dir, "*CAL_ATS*.CSV")
         ps_file = self._find_file(sol_dir, "*DER_PS*.CSV")
@@ -422,13 +468,33 @@ class MedaService:
                     )
                 )
 
-        resp = MEDASolTimeSeriesResponse(
+        return MEDASolTimeSeriesResponse(
             sol=sol,
             site_location="Jezero Crater, Mars",
             is_historical_archive=True,
             samples=samples,
             total_samples=len(samples)
         )
+
+    def get_sol_timeseries(self, sol: int, max_points: int = 100) -> MEDASolTimeSeriesResponse:
+        """Return downsampled time series for plotting diurnal trends.
+
+        Attempts to load verified pre-computed resolution from disk cache first.
+        Falls back to parsing raw NASA CSVs if cache is absent, malformed,
+        or does not contain the requested max_points resolution.
+        """
+        cache_key = (sol, max_points)
+        if cache_key in self._timeseries_cache:
+            self._timeseries_cache.move_to_end(cache_key)
+            return self._timeseries_cache[cache_key]
+
+        # 1. Fast path: check pre-computed disk cache
+        resp = self._load_timeseries_from_disk_cache(sol, max_points)
+
+        # 2. Fallback path: parse raw CSV files
+        if resp is None:
+            resp = self._parse_timeseries_from_csv(sol, max_points)
+
         self._timeseries_cache[cache_key] = resp
         if len(self._timeseries_cache) > self.MAX_TIMESERIES_CACHE:
             self._timeseries_cache.popitem(last=False)
