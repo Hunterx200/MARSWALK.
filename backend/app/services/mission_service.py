@@ -1,6 +1,7 @@
 """Mission management and report generation service."""
 import math
 import uuid
+from collections import OrderedDict
 from typing import Dict, Optional
 
 from app.core.errors import NotFoundException
@@ -16,9 +17,11 @@ from app.services.nasa_pds import DEMO_OBSERVATIONS
 
 
 class MissionService:
+    MAX_MISSIONS = 100
+
     def __init__(self):
-        # In-memory dictionary store for MVP (ephemeral between restarts)
-        self._missions: Dict[str, MissionResponse] = {}
+        # In-memory LRU store for MVP (ephemeral between restarts, capped at MAX_MISSIONS)
+        self._missions: OrderedDict[str, MissionResponse] = OrderedDict()
 
     def create_mission(self, req: MissionCreateRequest) -> MissionResponse:
         """Create a new mission plan with automated multi-section report."""
@@ -113,6 +116,8 @@ class MissionService:
         )
 
         self._missions[mission_id] = mission
+        if len(self._missions) > self.MAX_MISSIONS:
+            self._missions.popitem(last=False)
         return mission
 
     def get_mission(self, mission_id: str) -> MissionResponse:
@@ -121,6 +126,7 @@ class MissionService:
             raise NotFoundException(
                 message=f"Mission with ID '{mission_id}' was not found. Note that mission storage is in-memory for this MVP."
             )
+        self._missions.move_to_end(mission_id)
         return self._missions[mission_id]
 
 

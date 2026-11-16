@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: marswalk
+    runtime: docker
+    dockerfilePath: Dockerfile
+    dockerContext: .
+    plan: free
+    region: oregon
+    healthCheckPath: /api/health
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: MARSWALK_STATIC_DIR
+        value: /app/frontend/dist

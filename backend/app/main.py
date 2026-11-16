@@ -1,7 +1,11 @@
 """FastAPI main application entrypoint for MARSWALK."""
 import logging
+import os
+from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -36,11 +40,12 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-# CORS configuration
+# CORS configuration: avoid wildcard with credentials
+is_wildcard_cors = "*" in settings.cors_origins
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
-    allow_credentials=True,
+    allow_credentials=not is_wildcard_cors,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -62,12 +67,52 @@ app.include_router(routes_routes.router, prefix="/api")
 app.include_router(routes_missions.router, prefix="/api")
 app.include_router(routes_environment.router, prefix="/api")
 
+# Static frontend assets and SPA fallback configuration
+STATIC_DIR = os.getenv(
+    "MARSWALK_STATIC_DIR",
+    str(Path(__file__).resolve().parent.parent.parent / "frontend" / "dist")
+)
 
-@app.get("/")
-async def root():
+# Mount compiled assets directory (/assets) if present
+assets_dir = os.path.join(STATIC_DIR, "assets")
+if os.path.isdir(assets_dir):
+    app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+
+
+@app.get("/", include_in_schema=False)
+async def serve_root():
+    """Serve index.html at root, or return API status if frontend is not built."""
+    index_file = os.path.join(STATIC_DIR, "index.html")
+    if os.path.isfile(index_file):
+        return FileResponse(index_file)
     return {
         "service": "MARSWALK Backend API",
         "version": settings.version,
         "docs": "/docs",
         "health": "/api/health",
+        "note": "Frontend static assets not built. Run 'npm run build' in frontend directory."
     }
+
+
+@app.get("/{full_path:path}", include_in_schema=False)
+async def serve_spa_or_static(full_path: str):
+    """Serve compiled frontend static assets and SPA fallback for non-API routes."""
+    # Ensure unknown /api/* requests strictly return JSON 404 (never the HTML page)
+    if full_path.startswith("api/") or full_path == "api":
+        raise StarletteHTTPException(status_code=404, detail="API endpoint not found")
+
+    # Pass through docs and openapi routes if requested without slash
+    if full_path in ("docs", "redoc", "openapi.json"):
+        raise StarletteHTTPException(status_code=404, detail="Not Found")
+
+    # If an exact static file exists (e.g. favicon.ico, logo.svg), serve it
+    file_path = os.path.join(STATIC_DIR, full_path)
+    if os.path.isfile(file_path):
+        return FileResponse(file_path)
+
+    # For any frontend route (including nested client routes), return index.html
+    index_file = os.path.join(STATIC_DIR, "index.html")
+    if os.path.isfile(index_file):
+        return FileResponse(index_file)
+
+    raise StarletteHTTPException(status_code=404, detail="Resource not found")

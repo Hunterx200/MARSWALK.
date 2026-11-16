@@ -101,6 +101,8 @@ export class MarsMapController {
     });
 
     // NASA Mars Trek MOLA Shaded Topography
+    // Initialized as visible: false so Mars's natural reddish-terracotta Viking mosaic is displayed.
+    // (MOLA ClrShade uses false-color elevation palette where Jezero basin at -2500m appears green).
     this.molaLayer = new TileLayer({
       source: new XYZ({
         url: 'https://trek.nasa.gov/tiles/Mars/EQ/Mars_MGS_MOLA_ClrShade_merge_global_463m/1.0.0/default/default028mm/{z}/{y}/{x}.jpg',
@@ -109,8 +111,8 @@ export class MarsMapController {
         attributions: 'NASA / MGS / MOLA Team (Mars Trek)',
         crossOrigin: 'anonymous',
       }),
-      visible: true,
-      opacity: 0.45,
+      visible: false,
+      opacity: 0.6,
       zIndex: 2,
     });
 
@@ -238,17 +240,22 @@ export class MarsMapController {
       name: 'Jezero Western Delta Fan',
       type: 'geology_formation',
     });
-    deltaFeature.setStyle(new Style({
-      stroke: new Stroke({ color: 'rgba(56, 189, 248, 0.6)', width: 1.5, lineDash: [4, 4] }),
-      fill: new Fill({ color: 'rgba(56, 189, 248, 0.05)' }),
-      text: new Text({
-        text: 'JEZERO DELTA FAN',
-        font: 'bold 11px ui-monospace, monospace',
-        fill: new Fill({ color: 'rgba(56, 189, 248, 0.8)' }),
-        stroke: new Stroke({ color: '#07090e', width: 2.5 }),
-        offsetY: -10,
+    deltaFeature.setStyle([
+      new Style({
+        stroke: new Stroke({ color: 'rgba(234, 88, 12, 0.45)', width: 4 }),
       }),
-    }));
+      new Style({
+        stroke: new Stroke({ color: 'rgba(249, 115, 22, 0.95)', width: 1.8, lineDash: [6, 4] }),
+        fill: new Fill({ color: 'rgba(194, 65, 12, 0.08)' }),
+        text: new Text({
+          text: 'JEZERO DELTA FAN • PALEO-LAKE',
+          font: 'bold 11px ui-monospace, monospace',
+          fill: new Fill({ color: '#fed7aa' }),
+          stroke: new Stroke({ color: '#07090e', width: 3.5 }),
+          offsetY: -10,
+        }),
+      }),
+    ]);
     this.contourSource.addFeature(deltaFeature);
 
     // Neretva Vallis (Inflow River Channel entering Jezero from the west)
@@ -263,16 +270,21 @@ export class MarsMapController {
       name: 'Neretva Vallis Inflow Channel',
       type: 'channel',
     });
-    riverFeature.setStyle(new Style({
-      stroke: new Stroke({ color: 'rgba(16, 185, 129, 0.7)', width: 2.5 }),
-      text: new Text({
-        text: 'Neretva Vallis (Paleo-Channel)',
-        font: '10px ui-monospace, monospace',
-        fill: new Fill({ color: '#10b981' }),
-        stroke: new Stroke({ color: '#07090e', width: 2 }),
-        offsetY: -8,
+    riverFeature.setStyle([
+      new Style({
+        stroke: new Stroke({ color: 'rgba(217, 119, 6, 0.4)', width: 6 }),
       }),
-    }));
+      new Style({
+        stroke: new Stroke({ color: '#ea580c', width: 2.2 }),
+        text: new Text({
+          text: 'Neretva Vallis Ancient Inflow Channel',
+          font: 'bold 10px ui-monospace, monospace',
+          fill: new Fill({ color: '#fdba74' }),
+          stroke: new Stroke({ color: '#07090e', width: 3 }),
+          offsetY: -8,
+        }),
+      }),
+    ]);
     this.contourSource.addFeature(riverFeature);
 
     // Jezero Crater Landing Ellipse (Octavia E. Butler Landing zone: 7.7 x 6.6 km)
@@ -291,17 +303,22 @@ export class MarsMapController {
       geometry: new Polygon([ellipsePoints]),
       name: 'Mars 2020 Landing Ellipse',
     });
-    ellipseFeature.setStyle(new Style({
-      stroke: new Stroke({ color: 'rgba(245, 158, 11, 0.8)', width: 1.5, lineDash: [6, 4] }),
-      fill: new Fill({ color: 'rgba(245, 158, 11, 0.03)' }),
-      text: new Text({
-        text: 'M2020 LANDING ELLIPSE',
-        font: '10px ui-monospace, monospace',
-        fill: new Fill({ color: '#f59e0b' }),
-        stroke: new Stroke({ color: '#07090e', width: 2 }),
-        offsetY: -16,
+    ellipseFeature.setStyle([
+      new Style({
+        stroke: new Stroke({ color: 'rgba(245, 158, 11, 0.35)', width: 4 }),
       }),
-    }));
+      new Style({
+        stroke: new Stroke({ color: '#f59e0b', width: 1.8, lineDash: [8, 5] }),
+        fill: new Fill({ color: 'rgba(245, 158, 11, 0.05)' }),
+        text: new Text({
+          text: 'M2020 LANDING ELLIPSE (7.7 × 6.6 km)',
+          font: 'bold 10px ui-monospace, monospace',
+          fill: new Fill({ color: '#fde68a' }),
+          stroke: new Stroke({ color: '#07090e', width: 3 }),
+          offsetY: -16,
+        }),
+      }),
+    ]);
     this.contourSource.addFeature(ellipseFeature);
 
     // Jezero Crater Rim (~45km diameter impact crater structure)
@@ -321,17 +338,22 @@ export class MarsMapController {
       name: 'Jezero Crater Rim (45km Diameter)',
       type: 'geology_formation',
     });
-    rimFeature.setStyle(new Style({
-      stroke: new Stroke({ color: 'rgba(244, 63, 94, 0.55)', width: 1.5, lineDash: [8, 6] }),
-      fill: new Fill({ color: 'rgba(244, 63, 94, 0.02)' }),
-      text: new Text({
-        text: 'JEZERO CRATER RIM (45 km)',
-        font: 'bold 11px ui-monospace, monospace',
-        fill: new Fill({ color: 'rgba(251, 113, 133, 0.95)' }),
-        stroke: new Stroke({ color: '#07090e', width: 3.5 }),
-        offsetY: -12,
+    rimFeature.setStyle([
+      new Style({
+        stroke: new Stroke({ color: 'rgba(244, 63, 94, 0.35)', width: 4 }),
       }),
-    }));
+      new Style({
+        stroke: new Stroke({ color: 'rgba(251, 113, 133, 0.85)', width: 2.0, lineDash: [10, 6] }),
+        fill: new Fill({ color: 'rgba(244, 63, 94, 0.03)' }),
+        text: new Text({
+          text: 'JEZERO CRATER RIM (Ø 45 km)',
+          font: 'bold 11px ui-monospace, monospace',
+          fill: new Fill({ color: '#fda4af' }),
+          stroke: new Stroke({ color: '#07090e', width: 4 }),
+          offsetY: -12,
+        }),
+      }),
+    ]);
     this.contourSource.addFeature(rimFeature);
 
     // South Séítah Dune Field (Active sand ripple corridor explored by Perseverance)
@@ -348,17 +370,22 @@ export class MarsMapController {
       name: 'South Séítah Dune Field (High Wheel-Slip Hazard)',
       type: 'geology_formation',
     });
-    seitahFeature.setStyle(new Style({
-      stroke: new Stroke({ color: 'rgba(234, 179, 8, 0.65)', width: 1.5, lineDash: [4, 4] }),
-      fill: new Fill({ color: 'rgba(234, 179, 8, 0.08)' }),
-      text: new Text({
-        text: 'SOUTH SÉÍTAH DUNE FIELD',
-        font: '10px ui-monospace, monospace',
-        fill: new Fill({ color: '#facc15' }),
-        stroke: new Stroke({ color: '#07090e', width: 3.5 }),
-        offsetY: 0,
+    seitahFeature.setStyle([
+      new Style({
+        stroke: new Stroke({ color: 'rgba(234, 179, 8, 0.35)', width: 4 }),
       }),
-    }));
+      new Style({
+        stroke: new Stroke({ color: 'rgba(234, 179, 8, 0.85)', width: 1.8, lineDash: [5, 4] }),
+        fill: new Fill({ color: 'rgba(234, 179, 8, 0.10)' }),
+        text: new Text({
+          text: 'SOUTH SÉÍTAH DUNE FIELD (HIGH SLIP)',
+          font: 'bold 10px ui-monospace, monospace',
+          fill: new Fill({ color: '#fef08a' }),
+          stroke: new Stroke({ color: '#07090e', width: 3.5 }),
+          offsetY: 0,
+        }),
+      }),
+    ]);
     this.contourSource.addFeature(seitahFeature);
   }
 
@@ -372,13 +399,21 @@ export class MarsMapController {
       name: 'Perseverance Rover Traverse (Sol 0 - 1000+)',
     });
 
-    trackFeature.setStyle(new Style({
-      stroke: new Stroke({
-        color: '#06b6d4',
-        width: 3,
-        lineDash: [4, 4],
+    trackFeature.setStyle([
+      new Style({
+        stroke: new Stroke({
+          color: 'rgba(6, 182, 212, 0.35)',
+          width: 7,
+        }),
       }),
-    }));
+      new Style({
+        stroke: new Stroke({
+          color: '#06b6d4',
+          width: 2.5,
+          lineDash: [6, 4],
+        }),
+      }),
+    ]);
     this.traverseSource.addFeature(trackFeature);
 
     // Add milestone points
@@ -390,9 +425,9 @@ export class MarsMapController {
         });
         ptFeature.setStyle(new Style({
           image: new CircleStyle({
-            radius: 4,
+            radius: 5,
             fill: new Fill({ color: '#06b6d4' }),
-            stroke: new Stroke({ color: '#ffffff', width: 1.5 }),
+            stroke: new Stroke({ color: '#ffffff', width: 2 }),
           }),
         }));
         this.traverseSource.addFeature(ptFeature);

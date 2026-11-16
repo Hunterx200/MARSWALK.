@@ -343,8 +343,10 @@ export const App: React.FC = () => {
 
         {/* Right Sidebar Control Deck */}
         <aside
-          className={`w-full sm:w-96 max-w-full h-full bg-space-900 border-l border-space-750 flex flex-col z-20 shadow-2xl transition-all duration-300 ${
-            isSidebarOpen ? 'translate-x-0' : 'translate-x-full'
+          className={`h-full bg-space-900 border-l border-space-750 flex flex-col z-20 shadow-2xl transition-all duration-300 overflow-hidden ${
+            isSidebarOpen
+              ? 'w-full sm:w-96 max-w-full translate-x-0'
+              : 'w-0 max-w-0 translate-x-full border-l-0 pointer-events-none'
           }`}
         >
           {/* Navigation Tabs */}

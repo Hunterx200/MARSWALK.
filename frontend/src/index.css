@@ -97,3 +97,64 @@
 .radar-sweep {
   animation: radar-sweep 12s linear infinite;
 }
+
+/* Aerospace & Sci-Fi HUD Glows */
+@keyframes pulse-glow-cyan {
+  0%, 100% {
+    box-shadow: 0 0 12px rgba(6, 182, 212, 0.35), inset 0 0 8px rgba(6, 182, 212, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 24px rgba(6, 182, 212, 0.65), inset 0 0 16px rgba(6, 182, 212, 0.3);
+  }
+}
+
+@keyframes pulse-glow-mars {
+  0%, 100% {
+    box-shadow: 0 0 12px rgba(215, 93, 54, 0.35), inset 0 0 8px rgba(215, 93, 54, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 24px rgba(215, 93, 54, 0.65), inset 0 0 16px rgba(215, 93, 54, 0.3);
+  }
+}
+
+.hud-panel {
+  background: rgba(11, 15, 23, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(55, 71, 104, 0.65);
+  box-shadow: 0 12px 36px 0 rgba(0, 0, 0, 0.65);
+}
+
+.hud-panel-accent {
+  background: rgba(16, 22, 34, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(6, 182, 212, 0.4);
+  box-shadow: 0 12px 36px 0 rgba(0, 0, 0, 0.7), 0 0 20px 0 rgba(6, 182, 212, 0.2);
+}
+
+.hud-bracket {
+  position: relative;
+}
+.hud-bracket::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  width: 8px;
+  height: 8px;
+  border-top: 2px solid #38bdf8;
+  border-left: 2px solid #38bdf8;
+  pointer-events: none;
+}
+.hud-bracket::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  border-bottom: 2px solid #38bdf8;
+  border-right: 2px solid #38bdf8;
+  pointer-events: none;
+}

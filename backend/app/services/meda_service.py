@@ -7,6 +7,7 @@ import os
 import glob
 import csv
 import logging
+from collections import OrderedDict
 from typing import Optional, List, Dict, Any, Tuple
 from app.core.errors import NotFoundException, InvalidRequestException
 from app.schemas.environment import (
@@ -49,11 +50,15 @@ def _parse_int(val: Optional[str]) -> Optional[int]:
 
 
 class MedaService:
+    MAX_TELEMETRY_CACHE = 256
+    MAX_TIMESERIES_CACHE = 128
+    MAX_SUMMARY_CACHE = 128
+
     def __init__(self, data_dir: str = DATA_DIR):
         self.data_dir = data_dir
-        self._telemetry_cache: Dict[Tuple[int, Optional[float]], MEDASolTelemetryResponse] = {}
-        self._summary_cache: Dict[int, MEDASolSummaryResponse] = {}
-        self._timeseries_cache: Dict[Tuple[int, int], MEDASolTimeSeriesResponse] = {}
+        self._telemetry_cache: OrderedDict[Tuple[int, Optional[float]], MEDASolTelemetryResponse] = OrderedDict()
+        self._summary_cache: OrderedDict[int, MEDASolSummaryResponse] = OrderedDict()
+        self._timeseries_cache: OrderedDict[Tuple[int, int], MEDASolTimeSeriesResponse] = OrderedDict()
 
     def get_available_sols(self) -> List[int]:
         """Return sorted list of Sols available in local verified PDS store."""
@@ -90,6 +95,7 @@ class MedaService:
         """Return synchronized or coincident multi-sensor telemetry for a Sol."""
         cache_key = (sol, requested_sclk)
         if cache_key in self._telemetry_cache:
+            self._telemetry_cache.move_to_end(cache_key)
             return self._telemetry_cache[cache_key]
 
         sol_dir = self._get_sol_dir(sol)
@@ -301,12 +307,15 @@ class MedaService:
         )
 
         self._telemetry_cache[cache_key] = response
+        if len(self._telemetry_cache) > self.MAX_TELEMETRY_CACHE:
+            self._telemetry_cache.popitem(last=False)
         return response
 
     def get_sol_timeseries(self, sol: int, max_points: int = 100) -> MEDASolTimeSeriesResponse:
         """Return downsampled time series for plotting diurnal trends."""
         cache_key = (sol, max_points)
         if cache_key in self._timeseries_cache:
+            self._timeseries_cache.move_to_end(cache_key)
             return self._timeseries_cache[cache_key]
 
         sol_dir = self._get_sol_dir(sol)
@@ -421,11 +430,14 @@ class MedaService:
             total_samples=len(samples)
         )
         self._timeseries_cache[cache_key] = resp
+        if len(self._timeseries_cache) > self.MAX_TIMESERIES_CACHE:
+            self._timeseries_cache.popitem(last=False)
         return resp
 
     def get_sol_summary(self, sol: int) -> MEDASolSummaryResponse:
         """Compute verified statistics across the Sol."""
         if sol in self._summary_cache:
+            self._summary_cache.move_to_end(sol)
             return self._summary_cache[sol]
 
         sol_dir = self._get_sol_dir(sol)
@@ -578,6 +590,8 @@ class MedaService:
             }
         )
         self._summary_cache[sol] = resp
+        if len(self._summary_cache) > self.MAX_SUMMARY_CACHE:
+            self._summary_cache.popitem(last=False)
         return resp
 
 

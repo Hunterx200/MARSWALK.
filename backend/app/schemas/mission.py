@@ -23,10 +23,10 @@ class MissionReport(BaseModel):
 
 
 class MissionCreateRequest(BaseModel):
-    region_id: str = "jezero_crater"
+    region_id: str = Field(default="jezero_crater", max_length=64)
     name: str = Field(..., min_length=1, max_length=120)
-    route_id: str
-    notes: Optional[str] = None
+    route_id: str = Field(..., min_length=1, max_length=128)
+    notes: Optional[str] = Field(default=None, max_length=2000)
 
 
 class MissionResponse(BaseModel):

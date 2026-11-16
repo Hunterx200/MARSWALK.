@@ -10,7 +10,12 @@ import {
   Navigation,
   Globe2,
   Map as MapIcon,
-  X
+  X,
+  Compass,
+  Radio,
+  RotateCcw,
+  ZoomIn,
+  ZoomOut
 } from 'lucide-react';
 
 interface MarsMapProps {
@@ -146,8 +151,8 @@ export const MarsMap: React.FC<MarsMapProps> = ({
     };
 
     const initOrUpdateMap = () => {
-      if (!controller.map) {
-        // First initialization against valid non-zero container
+      if (!attachedMap) {
+        // First initialization against valid non-zero container in this lifecycle
         attachedMap = controller.initMap(container);
         attachEvents(attachedMap);
       } else {
@@ -178,6 +183,7 @@ export const MarsMap: React.FC<MarsMapProps> = ({
       resizeObserver.disconnect();
       if (attachedMap) {
         detachEvents(attachedMap);
+        attachedMap = null;
       }
       controller.detachMap();
     };
@@ -192,13 +198,22 @@ export const MarsMap: React.FC<MarsMapProps> = ({
 
   return (
     <div
-      className="relative w-full h-full overflow-hidden"
+      className="relative w-full h-full overflow-hidden hud-bracket"
       style={{
         background: 'radial-gradient(ellipse at 50% 50%, #471b10 0%, #2b1109 55%, #130604 100%)',
       }}
     >
       {/* OpenLayers Map Canvas */}
       <div ref={mapContainerRef} className="w-full h-full" />
+
+      {/* Center Targeting Reticle (Subtle Tactical Sci-Fi HUD) */}
+      <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
+        <div className="relative w-8 h-8 opacity-25">
+          <div className="absolute top-1/2 left-0 right-0 h-[1px] bg-telemetry-cyan" />
+          <div className="absolute left-1/2 top-0 bottom-0 w-[1px] bg-telemetry-cyan" />
+          <div className="absolute inset-0 border border-telemetry-cyan/60 rounded-full" />
+        </div>
+      </div>
 
       {/* Map Interactive Mode Pills (Top Left) */}
       <div className="absolute top-4 left-4 z-20 flex items-center space-x-1.5 p-1 rounded-lg bg-space-900/90 backdrop-blur-md border border-space-700/80 shadow-xl font-mono text-xs">
@@ -251,7 +266,7 @@ export const MarsMap: React.FC<MarsMapProps> = ({
 
         <button
           onClick={() => setSelectionMode('start')}
-          className={`px-2.5 py-1.5 rounded-md text-xs font-medium flex items-center space-x-1.5 transition-all ${
+          className={`px-2.5 py-1.5 rounded-md text-xs font-medium flex items-center space-x-1.5 transition-all cursor-pointer ${
             selectionMode === 'start'
               ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/60 shadow-sm'
               : 'text-slate-400 hover:text-emerald-400'
@@ -264,7 +279,7 @@ export const MarsMap: React.FC<MarsMapProps> = ({
 
         <button
           onClick={() => setSelectionMode('goal')}
-          className={`px-2.5 py-1.5 rounded-md text-xs font-medium flex items-center space-x-1.5 transition-all ${
+          className={`px-2.5 py-1.5 rounded-md text-xs font-medium flex items-center space-x-1.5 transition-all cursor-pointer ${
             selectionMode === 'goal'
               ? 'bg-amber-950/80 text-amber-300 border border-amber-500/60 shadow-sm'
               : 'text-slate-400 hover:text-amber-400'
@@ -273,6 +288,42 @@ export const MarsMap: React.FC<MarsMapProps> = ({
         >
           <Target className="w-3.5 h-3.5 text-amber-400" />
           <span>Set Goal</span>
+        </button>
+      </div>
+
+      {/* Top Right Quick Controls */}
+      <div className="absolute top-4 right-4 z-20 flex items-center space-x-1.5 p-1 rounded-lg bg-space-900/90 backdrop-blur-md border border-space-700/80 shadow-xl font-mono text-xs">
+        <button
+          type="button"
+          onClick={() => controller.resetToJezero()}
+          className="px-2.5 py-1.5 rounded-md flex items-center space-x-1.5 text-slate-300 hover:text-telemetry-cyan hover:bg-space-800 transition-all cursor-pointer"
+          title="Reset View to Jezero Crater Center"
+        >
+          <RotateCcw className="w-3.5 h-3.5 text-telemetry-cyan" />
+          <span className="hidden sm:inline">Jezero Focus</span>
+        </button>
+        <div className="w-[1px] h-4 bg-space-700" />
+        <button
+          type="button"
+          onClick={() => {
+            const v = controller.map?.getView();
+            if (v) v.animate({ zoom: (v.getZoom() || 11.5) + 1, duration: 250 });
+          }}
+          className="p-1.5 rounded-md text-slate-300 hover:text-white hover:bg-space-800 transition-all cursor-pointer"
+          title="Zoom In"
+        >
+          <ZoomIn className="w-3.5 h-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            const v = controller.map?.getView();
+            if (v) v.animate({ zoom: (v.getZoom() || 11.5) - 1, duration: 250 });
+          }}
+          className="p-1.5 rounded-md text-slate-300 hover:text-white hover:bg-space-800 transition-all cursor-pointer"
+          title="Zoom Out"
+        >
+          <ZoomOut className="w-3.5 h-3.5" />
         </button>
       </div>
 
@@ -292,6 +343,11 @@ export const MarsMap: React.FC<MarsMapProps> = ({
 
       {/* Live Coordinate HUD & Telemetry Bar (Bottom Left) */}
       <div className="absolute bottom-4 left-4 z-20 flex items-center space-x-3 px-3 py-2 rounded-lg bg-space-900/90 backdrop-blur-md border border-space-700/80 text-xs font-mono shadow-xl text-slate-300 select-none">
+        <div className="flex items-center space-x-1.5 text-telemetry-cyan">
+          <Radio className="w-3.5 h-3.5 animate-pulse text-telemetry-cyan" />
+          <span className="text-[10px] tracking-wider font-semibold text-cyan-300 hidden xl:inline">RADAR ACTIVE</span>
+        </div>
+        <span className="text-slate-600 hidden xl:inline">|</span>
         <div className="flex items-center space-x-1">
           <span className="text-slate-500">LAT:</span>
           <span className="text-mars-300 font-bold">
@@ -339,13 +395,22 @@ export const MarsMap: React.FC<MarsMapProps> = ({
 
         {/* NASA Imagery Provenance */}
         <div className="flex items-center space-x-1.5 text-slate-400">
-          <span className="text-mars-400">NASA Viking + MOLA 3D</span>
+          <span className="text-mars-400">NASA Viking MDIM2.1 Color (True Mars)</span>
         </div>
+      </div>
+
+      {/* Planetary True North & Geodetic Reference (Bottom Right) */}
+      <div className="hidden sm:flex absolute bottom-4 right-4 z-20 items-center space-x-2 px-3 py-1.5 rounded-lg bg-space-900/90 backdrop-blur-md border border-space-700/80 font-mono text-[11px] text-slate-300 shadow-xl select-none">
+        <Compass className="w-3.5 h-3.5 text-telemetry-cyan" />
+        <span className="text-slate-400">NORTH:</span>
+        <span className="text-telemetry-cyan font-semibold">+90.0°</span>
+        <span className="text-slate-600">|</span>
+        <span className="text-slate-500 text-[10px]">MOLA AREOID</span>
       </div>
 
       {/* Feature Details Inspector Card (Floating Modal on Click) */}
       {selectedFeature && (
-        <div className="absolute top-4 right-4 z-20 w-80 max-h-[85vh] overflow-y-auto rounded-xl bg-space-900/95 backdrop-blur-md border border-space-700 p-4 shadow-2xl text-slate-200 animate-in fade-in zoom-in-95">
+        <div className="absolute top-16 right-4 z-30 w-80 max-h-[80vh] overflow-y-auto rounded-xl bg-space-900/95 backdrop-blur-md border border-telemetry-cyan/40 p-4 shadow-2xl text-slate-200 animate-in fade-in zoom-in-95 hud-panel-accent hud-bracket">
           <div className="flex items-start justify-between pb-2 border-b border-space-750">
             <div className="flex items-center space-x-2">
               {selectedFeature.type === 'hazard' && <ShieldAlert className="w-4 h-4 text-rose-400" />}

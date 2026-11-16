@@ -33,11 +33,11 @@ export const MissionReportModal: React.FC<MissionReportModalProps> = ({
   startPoint,
   goalPoint,
 }) => {
-  if (!isOpen) return null;
-
   const [isSaving, setIsSaving] = useState(false);
   const [savedMission, setSavedMission] = useState<SaveMissionResponse | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  if (!isOpen) return null;
 
   const safeWaypoints = plannedRoute?.waypoints || [];
   const safeObs = Array.isArray(observations) ? observations : [];
